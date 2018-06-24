@@ -97,7 +97,7 @@ workflows:
       - install-deps
       - build
       - test
-      - deploy
+      - deploy:
         filters:
           branches:
             only: master
