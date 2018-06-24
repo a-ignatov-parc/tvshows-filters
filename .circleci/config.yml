@@ -95,12 +95,18 @@ workflows:
   commit:
     jobs:
       - install-deps
-      - build
-      - test
+      - build:
+          requires:
+            - install-deps
+      - test:
+          requires:
+            - build
       - deploy:
-        filters:
-          branches:
-            only: master
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
 
   weekly:
     triggers:
@@ -112,6 +118,12 @@ workflows:
                 - master
     jobs:
       - install-deps
-      - build
-      - test
-      - deploy
+      - build:
+          requires:
+            - install-deps
+      - test:
+          requires:
+            - build
+      - deploy:
+          requires:
+            - test
