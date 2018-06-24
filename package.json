@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "start": "rm -rf dist && mkdir -p dist && node src"
+  },
+  "dependencies": {
+    "listr": "^0.14.1",
+    "node-fetch": "^2.1.2"
+  }
+}

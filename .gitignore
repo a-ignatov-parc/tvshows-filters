@@ -1,0 +1,7 @@
+# General files
+*~
+.DS_Store
+
+# Build directories
+node_modules/
+dist/
