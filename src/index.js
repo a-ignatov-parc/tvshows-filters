@@ -70,4 +70,7 @@ const tasks = new Listr([
 
 tasks
   .run()
-  .catch(err => console.error(err));
+  .catch(err => {
+    console.error(err);
+    process.exitCode = 1;
+  });
