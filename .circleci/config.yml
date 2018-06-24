@@ -1,0 +1,117 @@
+version: 2
+
+job-configuration: &job-configuration
+  working_directory: ~/app
+  docker:
+    - image: circleci/node:8.9.1
+
+prepare-git: &prepare-git
+  name: Preparing git working directory
+  command: |
+    git clean -d -f
+    git checkout -- .
+    git config user.name "ci-bot"
+    git config user.email "ci-bot@circleci.com"
+    mkdir -p ~/.ssh/
+    echo -e "Host github.com\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
+
+jobs:
+  install-deps:
+    <<: *job-configuration
+    steps:
+      - checkout
+      - restore_cache:
+          key: dependency-cache-{{ checksum "yarn.lock" }}
+      - run:
+          name: Install dependencies using local yarn
+          command: npm run install-deps
+      - save_cache:
+          key: dependency-cache-{{ checksum "yarn.lock" }}
+          paths:
+            - ./node_modules
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - src
+            - package.json
+            - node_modules
+
+  build:
+    <<: *job-configuration
+    steps:
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Build application
+          command: |
+            npm run build
+      - store_artifacts:
+          path: ./dist
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - dist
+
+  test:
+    <<: *job-configuration
+    steps:
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Run code checks
+          command: |
+            npm run test
+
+  deploy:
+    <<: *job-configuration
+    steps:
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Preserve artifacts
+          command: |
+            ls -la ~/app
+            mkdir -p ~/tmp
+            cp -r ~/app/dist ~/tmp/app
+      - run:
+          <<: *prepare-git
+      - run:
+          name: Deploy artifacts
+          command: |
+            git remote set-url origin $GITHUB_UPSTREAM
+            git fetch -p
+            git checkout gh-pages
+            git clean -d -f
+            git merge origin/gh-pages
+            mkdir -p $TARGET_DIR
+            cp -r ~/tmp/app/* $TARGET_DIR
+            git add $TARGET_DIR
+            git commit -m "Filters release"
+            git push origin gh-pages
+
+workflows:
+  version: 2
+
+  commit:
+    jobs:
+      - install-deps
+      - build
+      - test
+      - deploy
+        filters:
+          branches:
+            only: master
+
+  weekly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * 0"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - install-deps
+      - build
+      - test
+      - deploy
